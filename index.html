@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CSAPP 第三版英文版阅读辅助：中文生词录入、教材术语译法、自动去重词库与中文拓展。">
+  <title>CSAPP 生词本 · 中文阅读辅助</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">CS</div>
+      <div class="brand-text">
+        <h1>CSAPP 生词本</h1>
+        <p>《Computer Systems: A Programmer's Perspective》第 3 版 · 中文阅读辅助</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button type="button" class="btn ghost" id="btnHelp">使用说明 / 部署</button>
+      <button type="button" class="btn ghost" id="btnImport">导入备份</button>
+      <button type="button" class="btn primary" id="btnExport">导出备份</button>
+      <input type="file" id="fileImport" accept="application/json,.json" hidden>
+    </div>
+  </header>
+
+  <div class="notice-bar">
+    <span class="dot-info"></span>
+    纯静态页面，可直接部署到 <strong>github.io</strong>；词库保存在本机浏览器中，不上传任何服务器。换设备或换浏览器前请先「导出备份」。
+  </div>
+
+  <main class="layout">
+    <!-- ① 生词录入区 -->
+    <section class="panel panel-input" id="secInput">
+      <div class="panel-head">
+        <div class="ph-icon idx">1</div>
+        <div>
+          <h2>生词录入区</h2>
+          <p>读到不认识的词，填进来立即看中文</p>
+        </div>
+      </div>
+      <div class="panel-body">
+        <form id="entryForm" autocomplete="off">
+          <label class="field-label" for="wordInput">英文生词 <span class="req">必填</span></label>
+          <input type="text" class="input" id="wordInput" placeholder="例如：cache / two's complement / page fault" spellcheck="false" required>
+          <div class="quick">
+            <span class="quick-label">点一个试试：</span>
+            <div id="quickWords" class="quick-chips"></div>
+          </div>
+
+          <label class="field-label" for="chapterSelect">出现在哪一章 <span class="opt">选填，用于生成教材语境</span></label>
+          <select class="input" id="chapterSelect">
+            <option value="0">暂不指定章节</option>
+          </select>
+
+          <label class="field-label" for="sentenceInput">教材原句 <span class="opt">选填，帮助判断词义</span></label>
+          <textarea class="input textarea" id="sentenceInput" rows="3" placeholder="把包含这个词的英文句子抄在这里，例如：The cache is organized as a set of cache lines." spellcheck="false"></textarea>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary wide" id="btnSave">查询并保存</button>
+            <button type="button" class="btn ghost wide" id="btnPreview">仅查询预览</button>
+          </div>
+          <p class="hint">
+            同一个词在不同章节再次录入时，<strong>只补充出现记录、不新建词条</strong>；大小写与常见复数形式也会自动归并。
+          </p>
+        </form>
+      </div>
+    </section>
+
+    <!-- ② 即时结果区 -->
+    <section class="panel panel-result" id="secResult">
+      <div class="panel-head">
+        <div class="ph-icon idx">2</div>
+        <div>
+          <h2>即时结果区</h2>
+          <p>中文释义 + 教材推荐译法 + 中文拓展</p>
+        </div>
+        <span class="live-tag">即时</span>
+      </div>
+      <div class="panel-body" id="resultBody"></div>
+    </section>
+
+    <!-- ③ 词库列表 -->
+    <section class="panel panel-list" id="secList">
+      <div class="panel-head">
+        <div class="ph-icon idx">3</div>
+        <div>
+          <h2>词库列表</h2>
+          <p>按重要程度排序或分组，点击词条看详情</p>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="stats" id="stats"></div>
+
+        <input type="search" class="input search" id="searchInput" placeholder="搜索英文单词或中文释义（支持中文）">
+
+        <div class="filter-chips" id="filterChips"></div>
+
+        <div class="list-controls">
+          <label class="ctrl">
+            排序
+            <select id="sortSelect" class="mini-select">
+              <option value="score">重要程度（高 → 低）</option>
+              <option value="freq">出现频率（多 → 少）</option>
+              <option value="recent">最近补充</option>
+              <option value="alpha">字母顺序 A → Z</option>
+            </select>
+          </label>
+          <label class="check-ctrl"><input type="checkbox" id="groupToggle" checked> 按重要程度分组</label>
+        </div>
+
+        <div class="word-list" id="listBody"></div>
+
+        <div class="list-footer">
+          <button type="button" class="btn tiny" id="btnSeed">载入示例词条</button>
+          <button type="button" class="btn tiny danger" id="btnClear">清空词库</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ④ 词条详情区 -->
+    <section class="panel panel-detail" id="secDetail">
+      <div class="panel-head">
+        <div class="ph-icon idx">4</div>
+        <div>
+          <h2>词条详情区</h2>
+          <p>可修改译法、调整重要程度、标记掌握情况</p>
+        </div>
+      </div>
+      <div class="panel-body" id="detailBody"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>CSAPP 中文生词本 · 为英语水平有限的读者设计</span>
+    <span>释义与术语译法可在「词条详情」中自行修正；拓展链接优先指向中国网站上的中文计算机资料。</span>
+  </footer>
+
+  <!-- 使用说明 / 部署帮助 -->
+  <div class="modal-mask" id="helpModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal-head">
+        <h3 id="helpTitle">使用说明与 GitHub Pages 部署</h3>
+        <button type="button" class="icon-btn" id="helpClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <h4>怎么用</h4>
+        <ol>
+          <li>在<strong>生词录入区</strong>输入英文单词，选好章节（可粘贴原句），点「查询并保存」。</li>
+          <li><strong>即时结果区</strong>立刻给出中文释义、教材语境推荐译法，以及「相关术语 / 常见搭配 / 易混概念 / 教材语境」四项中文拓展。</li>
+          <li>再次遇到同一个词时（哪怕换了章节），只会把这次的章节、原句与时间<strong>补充进原词条</strong>，不会生成第二条。</li>
+          <li>在<strong>词库列表</strong>里搜索、筛选、排序或按重要程度分组；点词条进入<strong>详情区</strong>修改译法、手动调分、标记掌握程度。</li>
+        </ol>
+        <h4>重要程度怎么算</h4>
+        <p>自动分 = 基础分 38 + 教材核心概念 28 + 出现次数 × 5（最多 12 次） + 掌握情况（未掌握 +12 / 模糊 +4 / 已掌握 −28），再加上你在详情区的「手动调整」。≥72 分为<strong>重点攻克</strong>，48–71 分为<strong>常复习</strong>，其余为<strong>已巩固</strong>。标记已掌握后分数会自动降下来。</p>
+        <h4>发布到 github.io</h4>
+        <ol>
+          <li>在 GitHub 新建一个仓库，把本目录里的 <code>index.html</code> 与 <code>assets/</code> 一起上传到仓库根目录（无需构建、无需后端）。</li>
+          <li>打开仓库 <em>Settings → Pages</em>，<em>Build and deployment → Source</em> 选择 <em>Deploy from a branch</em>，分支选 <code>main</code>，目录选 <code>/ (root)</code>，保存。</li>
+          <li>等待几十秒后访问 <code>https://你的用户名.github.io/仓库名/</code> 即可。若仓库名就是 <code>你的用户名.github.io</code>，则直接访问根地址。</li>
+          <li>页面是纯静态的，所有词库数据保存在访问者自己的浏览器里；建议定期用「导出备份」保存 JSON 文件。</li>
+        </ol>
+        <h4>关于释义来源</h4>
+        <p>内置了覆盖全书 12 章的中文术语表（257 条，含 125 个核心概念、37 条精编拓展）与通用英汉小词典（191 词），命中时<strong>无需联网</strong>即可显示释义。若遇到词表之外的生词，会尝试联网获取通用中文翻译；网络不可用时仍会生成完整中文拓展，并提示你手动补写释义。自动结果都可以修改。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
